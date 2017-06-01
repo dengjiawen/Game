@@ -33,6 +33,10 @@ class AlienButton extends JButton{
 
 	}
 
+	public boolean isTarget(){
+		return containsAlien;
+	}
+
 	public boolean isActivatedTarget(){
 
 		return containsAlien && activated;
@@ -117,8 +121,16 @@ public class GridGame extends JPanel implements ActionListener
 
 				// add the button to this JPanel 
 				add( buttons[row][col] );
+			}
+		}
 
-				determineTarget(buttons[row][col]);
+		while (targetNum < 10){
+
+			for ( int row = 0; row < buttons.length; row++ ) {
+				// for each column in that row
+				for (int col = 0; col < buttons[row].length; col++) {
+					determineTarget(buttons[row][col]);
+				}
 			}
 		}
 
@@ -134,10 +146,12 @@ public class GridGame extends JPanel implements ActionListener
 
 	private void determineTarget(AlienButton button){
 
-		if (ThreadLocalRandom.current().nextInt(1,3) == 1 && targetNum < 10) {
-			button.containAlien();
-			targets.add(button);
-			targetNum++;
+		if (!button.isTarget()) {
+			if (ThreadLocalRandom.current().nextInt(1, 3) == 1 && targetNum < 10) {
+				button.containAlien();
+				targets.add(button);
+				targetNum++;
+			}
 		}
 
 	}
@@ -156,6 +170,7 @@ public class GridGame extends JPanel implements ActionListener
 			JOptionPane.showMessageDialog(null,
 					"GAME OVER!\nYour caught " + capturedAliens + " aliens.\n Your accuracy is "
 					+ (((float)capturedAliens/(float)TOTAL_ALIENS) * 100) + "%.","GAME OVER!",JOptionPane.INFORMATION_MESSAGE);
+			System.exit(100);
 		}
 
 	}
@@ -163,27 +178,20 @@ public class GridGame extends JPanel implements ActionListener
 	public void actionPerformed( ActionEvent e )
 
 	{
-		for ( int row = 0; row < buttons.length; row++ ) {
-			// for each col in that row
-			for (int col = 0; col < buttons[row].length; col++) {
-				// IF the source of this event (i.e., the button that was clicked)
-				//    is the same as the current button in the array
-				if (e.getSource() == buttons[row][col]) {
+		if (e.getSource() == currentTarget) {
 
-					if (buttons[row][col].isActivatedTarget()) {
-						System.out.println("That's the right target.");
-						capturedAliens ++;
-						buttons[row][col].deactivate();
-						activateNextTarget(buttons[row][col]);
-					} else {
-						System.out.println("Wrong target!");
-						currentTarget.deactivate();
-						activateNextTarget(currentTarget);
-					}
-				}
-			}
+			System.out.println("That's the right target.");
+			capturedAliens++;
+			currentTarget.deactivate();
+			activateNextTarget(currentTarget);
+
+		} else {
+
+			System.out.println("Wrong target!");
+			currentTarget.deactivate();
+			activateNextTarget(currentTarget);
+			
 		}
-
 
 	}
 
