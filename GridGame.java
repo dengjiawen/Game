@@ -1,14 +1,55 @@
-import java.awt.GridLayout;
+import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
-import java.awt.Color;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 
-import javax.swing.Icon;
-import javax.swing.ImageIcon;
-import javax.swing.JPanel;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.UIManager;
+import javax.swing.*;
+
+class AlienButton extends JButton{
+
+	private boolean containsAlien;
+	private boolean activated;
+
+	int col;
+	int row;
+
+
+	public AlienButton(int col, int row){
+
+		containsAlien = false;
+		activated = false;
+
+		this.col = col;
+		this.row = row;
+
+	}
+
+	public void containAlien(){
+
+		containsAlien = true;
+
+	}
+
+	public boolean isActivatedTarget(){
+
+		return containsAlien && activated;
+
+	}
+
+	public void setIcon(ImageIcon e){
+		super.setIcon(e);
+		activated = true;
+	}
+
+	public void deactivate(){
+		activated = false;
+		setIcon(null);
+	}
+
+}
 
 /**
  * GridClicker is a basic class to show how to set up a 2D array of buttons
@@ -16,21 +57,43 @@ import javax.swing.UIManager;
  **/
 public class GridGame extends JPanel implements ActionListener
 {
+	private static final int TOTAL_ALIENS = 10;
+	private static int capturedAliens = 0;
+
 	// a 2D array to hold the button instances
-	private JButton[][] buttons;
+	private AlienButton[][] buttons;
+	private ArrayList<AlienButton> targets;
+	private int targetNum;
+
+	private AlienButton currentTarget;
+
+	ImageIcon alienIcon;
 
 	/** 
 	 * Constructor creates a new JButtonWithImage object, which is a JPanel
 	 * containing a numRows x numCols grid of JButton instances.
 	 **/
 	public GridGame( int numRows, int numCols ) {
-		Icon alienIcon = new ImageIcon("Download:\\Alien.png");
+
+		try {
+			alienIcon = new ImageIcon(
+					new ImageIcon(
+							new URL("https://opengameart.org/sites/default/files/1ST%20FRAME_3.PNG"))
+							.getImage().getScaledInstance(50,50,Image.SCALE_SMOOTH));
+		} catch (MalformedURLException e){
+			e.printStackTrace();
+		}
+
+		targetNum = 0;
+
 		int x,y;
 		// use grid layout for this JPanel
 		setLayout( new GridLayout( numRows, numCols ) );
 
 		// allocate a 2D array for the buttons
-		buttons = new JButton[numRows][numCols];
+		buttons = new AlienButton[numRows][numCols];
+
+		targets = new ArrayList<>();
 
 		// a variable to hold the current button number
 		int buttonNum = 0;
@@ -42,10 +105,12 @@ public class GridGame extends JPanel implements ActionListener
 			for ( int col = 0; col < buttons[row].length; col++ )
 			{
 				// create a button instance and store it in the array
-				buttons[row][col] = new JButton( Integer.toString( buttonNum ) );
+				buttons[row][col] = new AlienButton(col,row);
 
 				// set its background color
 				buttons[row][col].setBackground( Color.GREEN );
+
+				buttons[row][col].addActionListener(this);
 
 				// increment the current button number
 				buttonNum++;
@@ -53,13 +118,12 @@ public class GridGame extends JPanel implements ActionListener
 				// add the button to this JPanel 
 				add( buttons[row][col] );
 
-				// ask the button to register this object for notification of clicks on the button
-				buttons[row][col].addActionListener( this );
+				determineTarget(buttons[row][col]);
 			}
 		}
-		x=(int)Math.round(Math.random()*3);
-		y=(int)Math.round(Math.random()*5);
-		buttons[x][y].setIcon(alienIcon);
+
+		activateTarget(targets.get(0));
+
 	}
 
 	/**
@@ -67,36 +131,66 @@ public class GridGame extends JPanel implements ActionListener
 	 * is clicked, this method will be invoked. The parameter e packs information
 	 * about the click event.
 	 **/
+
+	private void determineTarget(AlienButton button){
+
+		if (ThreadLocalRandom.current().nextInt(1,3) == 1 && targetNum < 10) {
+			button.containAlien();
+			targets.add(button);
+			targetNum++;
+		}
+
+	}
+
+	private void activateTarget(AlienButton button){
+		button.setIcon(alienIcon);
+		currentTarget = button;
+	}
+
+	private void activateNextTarget(AlienButton button){
+
+		try {
+			activateTarget(
+					targets.get(targets.indexOf(button) + 1));
+		} catch (IndexOutOfBoundsException e){
+			JOptionPane.showMessageDialog(null,
+					"GAME OVER!\nYour caught " + capturedAliens + " aliens.\n Your accuracy is "
+					+ (((float)capturedAliens/(float)TOTAL_ALIENS) * 100) + "%.","GAME OVER!",JOptionPane.INFORMATION_MESSAGE);
+		}
+
+	}
+
 	public void actionPerformed( ActionEvent e )
 
 	{
-		// for each row of the array
-		
-		for ( int row = 0; row < buttons.length; row++ )
-		{
+		for ( int row = 0; row < buttons.length; row++ ) {
 			// for each col in that row
-			for ( int col = 0; col < buttons[row].length; col++ )
-			{
+			for (int col = 0; col < buttons[row].length; col++) {
 				// IF the source of this event (i.e., the button that was clicked)
 				//    is the same as the current button in the array
-				if ( e.getSource() == buttons[row][col] )
-				{
-					// print out the row and column
-					System.out.println( "you clicked the button at " +
-							row + ", " + col );
+				if (e.getSource() == buttons[row][col]) {
 
-					
-					
+					if (buttons[row][col].isActivatedTarget()) {
+						System.out.println("That's the right target.");
+						capturedAliens ++;
+						buttons[row][col].deactivate();
+						activateNextTarget(buttons[row][col]);
+					} else {
+						System.out.println("Wrong target!");
+						currentTarget.deactivate();
+						activateNextTarget(currentTarget);
+					}
 				}
 			}
 		}
+
+
 	}
 
 	/**
 	 * Special main function to start the program. This creates an instance
 	 * of the JButtonWithImage GUI.
 	 **/
-	
 	
 	final static byte R=10;
 	final static byte C=10;
@@ -126,6 +220,9 @@ public class GridGame extends JPanel implements ActionListener
 
 		// ask it to exit the program when the window is closed
 		gridFrame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+
+		// ask it to appear at the center of the screen
+		gridFrame.setLocationRelativeTo(null);
 
 		// show the window!
 		gridFrame.setVisible( true );
